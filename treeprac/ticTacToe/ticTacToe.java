@@ -7,44 +7,105 @@ import java.util.Scanner;
 public class ticTacToe {
     Tree tree = new Tree();
     boolean turn = true;
+    static boolean playerStartsFirst = true; // Track who starts first
 
     public static void main(String args[]) {
-        ticTacToe tic = new ticTacToe();
-        tic.play();
+        Scanner mainScanner = new Scanner(System.in);
+        boolean playAgain = true;
+        int gameNumber = 1;
+        
+        while (playAgain) {
+            System.out.println("\n" + "=".repeat(40));
+            System.out.println("           GAME " + gameNumber);
+            System.out.println("=".repeat(40));
+            
+            if (playerStartsFirst) {
+                System.out.println("🎮 You go first this game! (O)");
+            } else {
+                System.out.println("🤖 Bot goes first this game! (X)");
+            }
+            System.out.println();
+            
+            ticTacToe game = new ticTacToe(playerStartsFirst);
+            game.play(mainScanner); // Pass the scanner to the play method
+            
+            // Switch who goes first for next game
+            playerStartsFirst = !playerStartsFirst;
+            gameNumber++;
+            
+            // Ask if they want to play again
+            System.out.print("\nWould you like to play another game? (y/n): ");
+            mainScanner.nextLine(); // Clear any leftover newline from previous nextInt() calls
+            String response = mainScanner.nextLine().trim().toLowerCase();
+            playAgain = response.equals("y") || response.equals("yes");
+        }
+        
+        System.out.println("\n🎉 Thanks for playing! See you next time!");
+        mainScanner.close();
     }
 
-    public ticTacToe() {
+    public ticTacToe(boolean playerStartsFirst) {
         Board starting = new Board();
         Node cur = new Node(starting);
         tree.root = cur;
-        genTree(tree.root, true);
-        
+        // Generate tree based on who goes first
+        // If player starts first, first level should be 'o' moves (false)
+        // If bot starts first, first level should be 'x' moves (true)
+        genTree(tree.root, !playerStartsFirst);
     }
 
-    public void play() {
+    public void play(Scanner sc) {
         Node current = tree.root;
-        Scanner sc = new Scanner(System.in);
-        boolean botTurn = true; 
+        boolean botTurn = !playerStartsFirst; // Bot's turn is opposite of player starts first
+        
+        // Show initial empty board
+        System.out.println("Starting board:");
+        current.state.print();
+        System.out.println();
 
         while (!gameIsOver(current.state)) {
             if (botTurn) {
-                
-                System.out.println("Bot's turn:");
+                System.out.println("Bot is thinking...");
                 current = getBest(current);
+                System.out.println("Bot played:");
                 current.state.print();
+                System.out.println();
 
                 if (gameIsOver(current.state)) {
                     break; 
                 }
             } else {
+                System.out.print("Your turn - Enter row (0-2): ");
+                int row = sc.nextInt();
+                System.out.print("Enter col (0-2): ");
+                int col = sc.nextInt();
                 
-                System.out.println("Your turn. Current board:");
-                //current.state.print();
+                // Validate input
+                if (row < 0 || row > 2 || col < 0 || col > 2) {
+                    System.out.println("Invalid position! Please enter 0, 1, or 2.");
+                    continue;
+                }
 
-                Node playerChoice = getPlayerMove(current, sc);
+                if (current.state.hash[row][col] != null) {
+                    System.out.println("That spot is already taken! Try again.");
+                    continue;
+                }
+
+                // Find the corresponding child node
+                Node playerChoice = null;
+                for (Node child : current.children) {
+                    if (child.state.hash[row][col] != null && child.state.hash[row][col] == 'o') {
+                        playerChoice = child;
+                        break;
+                    }
+                }
+                
                 if (playerChoice != null) {
                     current = playerChoice;
-
+                    System.out.println("You played:");
+                    current.state.print();
+                    System.out.println();
+                    
                     if (gameIsOver(current.state)) {
                         break; 
                     }
@@ -58,9 +119,8 @@ public class ticTacToe {
         }
 
         announceWinner(current.state);
-    }
-
-    private boolean gameIsOver(Board board) {
+        // Don't close the scanner here since it's shared
+    }    private boolean gameIsOver(Board board) {
         return board.isFull() || hasWinner(board);
     }
 
@@ -80,33 +140,6 @@ public class ticTacToe {
 
         return false;
     }
-
-    private Node getPlayerMove(Node current, Scanner sc) {
-        System.out.print("Enter row (0-2): ");
-        int row = sc.nextInt();
-        System.out.print("Enter col (0-2): ");
-        int col = sc.nextInt();
-
-   
-        if (row < 0 || row > 2 || col < 0 || col > 2) {
-            return null; 
-        }
-
-        if (current.state.hash[row][col] != null) {
-            return null; 
-        }
-
-        
-        for (Node child : current.children) {
-            if (child.state.hash[row][col] != null && child.state.hash[row][col] == 'o') {
-                return child;
-            }
-        }
-
-        return null; 
-    }
-
-
 
     public void genTree(Node node, boolean Cturn) {
         if (!node.state.isFull() && !node.state.endCheck()) {
